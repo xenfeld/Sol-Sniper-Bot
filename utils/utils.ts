@@ -195,3 +195,16 @@ export const retry = async <T>(
 };
 
 export const sleep = (ms = 0) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export function logInfo(message: string) {
+  if (process.env.LOG_LEVEL === 'info' || process.env.LOG_LEVEL === 'debug') {
+    console.log(`[INFO]: ${message}`);
+  }
+}
+
+export function logError(message: string) {
+  if (process.env.LOG_LEVEL === 'error' || process.env.LOG_LEVEL === 'debug') {
+    console.error(`[ERROR]: ${message}`);
+  }
+}
+
