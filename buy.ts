@@ -524,7 +524,7 @@ const runListener = async () => {
         }
         let completed = false;
         while (!completed) {
-          setTimeout(() => {}, 1000);
+          await new Promise((res) => setTimeout(res, 1000));
           const currValue = await retrieveTokenValueByAddress(accountData.mint.toBase58());
           if (currValue) {
             logger.info(accountData.mint, `Current Price: ${currValue} SOL`);
